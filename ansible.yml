@@ -1,0 +1,55 @@
+---
+- name: Clone GitHub repo
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Clone the GitHub repo
+      git:
+        repo: "https://github.com/vurulkan/rabbitmq-cluster-ansible-docker.git"
+        dest: "/tmp/cluster"
+
+- name: Build Docker image
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Build Docker image
+      docker_image:
+        path: "/tmp/cluster"
+        name: rabbitmq-mvv
+
+- name: Run Docker Compose
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Run Docker Compose
+      docker_compose:
+        project_src: "/tmp/cluster"
+        state: present
+
+- name: Set alias for Dcoker Exec
+  hosts: localhost
+  gather_facts: false
+
+  tasks:
+    - name: Create custom bash_aliases file
+      copy:
+        content: |
+          alias node1='docker exec -it cluster_rabbitmq1_1 /bin/bash'
+          alias node2='docker exec -it cluster_rabbitmq2_1 /bin/bash'
+          alias node3='docker exec -it cluster_rabbitmq3_1 /bin/bash'
+        dest: /etc/profile.d/custom_aliases.sh
+        mode: '0644'
+      become: yes
+
+    - name: Load custom bash_aliases file
+      lineinfile:
+        dest: /etc/bashrc
+        line: |
+          # Load custom aliases file
+          if [ -f /etc/profile.d/custom_aliases.sh ]; then
+            . /etc/profile.d/custom_aliases.sh
+          fi
+      become: yes
